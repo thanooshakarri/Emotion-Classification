@@ -84,15 +84,13 @@ def train(model_path="model", train_path="train.csv", dev_path="dev.csv"):
     early_stop=tf.keras.callbacks.EarlyStopping(
         monitor="val_f1_score",
         patience=2,
-        mode="max"
-    )
-    # define a model with a single fully connected layer
+        mode="max")
+        # define a model with a single fully connected layer
     model = tf.keras.Sequential()
     model.add(tf.keras.layers.Embedding(tokenizer.vocab_size,64))
     model.add(tf.keras.layers.Bidirectional(tf.keras.layers.GRU(32,return_sequences=True)))
     model.add(tf.keras.layers.LayerNormalization())
     model.add(tf.keras.layers.Bidirectional(tf.keras.layers.GRU(32)))
-    model.add(tf.keras.layers.LayerNormalization())
     model.add(tf.keras.layers.Dense(16))
     model.add(tf.keras.layers.Flatten())
     model.add(tf.keras.layers.Dense(
@@ -103,12 +101,12 @@ def train(model_path="model", train_path="train.csv", dev_path="dev.csv"):
     # specify compilation hyperparameters
     model.compile(
         optimizer=tf.keras.optimizers.Adam(0.001,clipnorm=1.0),
-        loss= tf.keras.losses.binary_focal_crossentropy,
+        loss= tf.keras.losses.binary_crossentropy,
         metrics=[tf.keras.metrics.F1Score(average="weighted", threshold=0.5)])
     # fit the model to the training data, monitoring F1 on the dev data
     model.fit(
         train_dataset,
-        epochs=100,
+        epochs=10,
         batch_size=64,
         validation_data=dev_dataset,
         callbacks=[tensorboard_callback,
@@ -118,7 +116,7 @@ def train(model_path="model", train_path="train.csv", dev_path="dev.csv"):
                 mode="max",
                 save_best_only=True),early_stop])
 
-def predict(model_path="model", input_path="dev.csv"):
+def predict(model_path="model", input_path="test-in.csv"):
 
     # load the saved model
     model = tf.keras.models.load_model(model_path)
