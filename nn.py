@@ -64,7 +64,6 @@ def train(model_path="model", train_path="train.csv", dev_path="dev.csv"):
     def gather_labels(example):
         """Converts the label columns into a list of 0s and 1s"""
         # the float here is because F1Score requires floats
-        print([float(example[l]) for l in labels])
         return {"labels": [float(example[l]) for l in labels]}
 
     # convert text and labels to format expected by model
@@ -90,9 +89,11 @@ def train(model_path="model", train_path="train.csv", dev_path="dev.csv"):
     # define a model with a single fully connected layer
     model = tf.keras.Sequential()
     model.add(tf.keras.layers.Embedding(tokenizer.vocab_size,64))
-    model.add(tf.keras.layers.Bidirectional(tf.keras.layers.GRU(32),
-                backward_layer=tf.keras.layers.GRU(32,go_backwards=True)))
-    model.add(tf.keras.layers.Dense(16, activation="selu"))
+    model.add(tf.keras.layers.Bidirectional(tf.keras.layers.GRU(32,return_sequences=True)))
+    model.add(tf.keras.layers.LayerNormalization())
+    model.add(tf.keras.layers.Bidirectional(tf.keras.layers.GRU(32)))
+    model.add(tf.keras.layers.LayerNormalization())
+    model.add(tf.keras.layers.Dense(16))
     model.add(tf.keras.layers.Flatten())
     model.add(tf.keras.layers.Dense(
             7,
@@ -102,27 +103,20 @@ def train(model_path="model", train_path="train.csv", dev_path="dev.csv"):
     # specify compilation hyperparameters
     model.compile(
         optimizer=tf.keras.optimizers.Adam(0.001,clipnorm=1.0),
-        loss= tf.keras.losses.binary_crossentropy,
+        loss= tf.keras.losses.binary_focal_crossentropy,
         metrics=[tf.keras.metrics.F1Score(average="weighted", threshold=0.5)])
     # fit the model to the training data, monitoring F1 on the dev data
     model.fit(
         train_dataset,
         epochs=100,
-        batch_size=32,
+        batch_size=64,
         validation_data=dev_dataset,
         callbacks=[tensorboard_callback,
             tf.keras.callbacks.ModelCheckpoint(
                 filepath=model_path,
                 monitor="val_f1_score",
                 mode="max",
-                save_best_only=True),early_stop],
-            class_weight={0:3.2264,
-             1:5.1963,
-             2:4.3980,
-             3:6.2480,
-             4:104.9666,
-             5:87.4722,
-             6:23.1544})
+                save_best_only=True),early_stop])
 
 def predict(model_path="model", input_path="dev.csv"):
 
